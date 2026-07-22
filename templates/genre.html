@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Genre - NIMEK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+        .card-hover:hover img { transform: scale(1.05); }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased flex flex-col min-h-screen">
+
+    <!-- NAVBAR RESPONSIF MOBILE -->
+    <nav class="bg-gray-800 shadow-lg fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <a href="/" class="text-xl sm:text-2xl font-bold text-blue-500 hover:text-blue-400 transition">
+                    Miku<span class="text-white">Anime</span>
+                </a>
+                <div class="flex space-x-1 sm:space-x-4 text-xs sm:text-sm font-medium">
+                    <a href="/" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Home</a>
+                    <a href="/genre" class="bg-gray-900 text-white px-2 sm:px-3 py-2 rounded-md">Genre</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- KONTEN UTAMA -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex-grow w-full">
+        
+        <!-- SECTION 1: SEMUA TOMBOL GENRE DITAMPILKAN SEKALIGUS -->
+        <div id="genre-list-section">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-gray-800 pb-4 gap-4">
+                <h2 class="text-xl sm:text-2xl font-bold border-l-4 border-yellow-500 pl-3">Pilih Genre Anime</h2>
+                <a href="/" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs sm:text-sm font-semibold transition">&larr; Kembali ke Home</a>
+            </div>
+            
+            <div id="loading-genre" class="flex justify-center items-center py-20">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
+            </div>
+            
+            <!-- Tampilkan Semua Genre Sekaligus secara Responsif -->
+            <div id="genre-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 hidden"></div>
+        </div>
+
+        <!-- SECTION 2: HASIL FILTER ANIME BERDASARKAN GENRE (DILIMIT 20 PER HALAMAN + PAGINATION) -->
+        <div id="genre-result-section" class="hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-gray-800 pb-4 gap-4">
+                <h2 id="result-title" class="text-xl sm:text-2xl font-bold border-l-4 border-yellow-500 pl-3">Hasil Genre</h2>
+                <button onclick="backToGenreList()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs sm:text-sm font-semibold transition">&larr; Pilih Genre Lain</button>
+            </div>
+            
+            <div id="loading-result" class="flex justify-center items-center py-20 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+            
+            <!-- Grid Hasil Anime -->
+            <div id="result-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6"></div>
+
+            <!-- PAGINATION HASIL ANIME -->
+            <div id="result-pagination" class="flex justify-center items-center mt-12 space-x-3 hidden">
+                <button id="res-btn-prev" onclick="changeResultPage(-1)" class="bg-gray-800 text-yellow-400 border border-gray-700 hover:bg-gray-700 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition disabled:opacity-50">&larr; Prev</button>
+                <span id="res-page-indicator" class="font-bold text-xs sm:text-sm bg-yellow-600 text-white px-3 sm:px-5 py-2 rounded-lg shadow-lg">Hal 1</span>
+                <button id="res-btn-next" onclick="changeResultPage(1)" class="bg-gray-800 text-yellow-400 border border-gray-700 hover:bg-gray-700 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition disabled:opacity-50">Next &rarr;</button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm mt-auto">
+        <p>&copy; 2026 NIMEK. Coded with KNTL.</p>
+    </footer>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        let currentSelectedGenre = '';
+        let allAnimeResults = [];
+        let currentResultPage = 1;
+        const ANIME_PER_PAGE = 20; // Limit hasil anime per halaman
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAllGenres();
+        });
+
+        async function fetchAllGenres() {
+            try {
+                const res = await fetch('/nontonanime-x/phalcon/api/get_anime_genre_list/');
+                const data = await res.json();
+
+                document.getElementById('loading-genre').classList.add('hidden');
+                const grid = document.getElementById('genre-grid');
+                grid.classList.remove('hidden');
+
+                if(data.status === 'ok' && data.genre) {
+                    data.genre.forEach(g => {
+                        grid.innerHTML += `
+                            <button onclick="filterByGenre('${g.genre_name}')" class="bg-gray-800 hover:bg-yellow-600 text-gray-200 hover:text-white border border-gray-700 p-3 rounded-lg text-xs sm:text-sm font-semibold transition shadow text-center truncate">
+                                ${g.genre_name}
+                            </button>
+                        `;
+                    });
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function filterByGenre(genreName) {
+            currentSelectedGenre = genreName;
+            currentResultPage = 1;
+
+            document.getElementById('genre-list-section').classList.add('hidden');
+            document.getElementById('genre-result-section').classList.remove('hidden');
+            document.getElementById('result-title').innerText = `Genre: ${genreName}`;
+            
+            const grid = document.getElementById('result-grid');
+            const loader = document.getElementById('loading-result');
+            const pagination = document.getElementById('result-pagination');
+            
+            grid.innerHTML = '';
+            pagination.classList.add('hidden');
+            loader.classList.remove('hidden');
+            window.scrollTo(0, 0);
+
+            try {
+                const formData = new URLSearchParams({
+                    'isAPKvalid': 'true',
+                    'genre1': genreName,
+                    'genre2': genreName,
+                    'lang': 'ID',
+                    'sort': 'ASC'
+                });
+
+                const res = await fetch('/nontonanime-x/phalcon/api/get_anime_by_genre/', { method: 'POST', body: formData });
+                const data = await res.json();
+                loader.classList.add('hidden');
+
+                if(data.status === 'ok' && data.categories && data.categories.length > 0) {
+                    allAnimeResults = data.categories;
+                    renderResultPage();
+                } else {
+                    grid.innerHTML = '<p class="text-center col-span-full text-gray-400 py-10">Tidak ada anime ditemukan untuk genre ini.</p>';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function renderResultPage() {
+            const grid = document.getElementById('result-grid');
+            const pagination = document.getElementById('result-pagination');
+            grid.innerHTML = '';
+
+            const startIndex = (currentResultPage - 1) * ANIME_PER_PAGE;
+            const endIndex = startIndex + ANIME_PER_PAGE;
+            const paginatedItems = allAnimeResults.slice(startIndex, endIndex);
+
+            grid.innerHTML = paginatedItems.map(anime => `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg card-hover cursor-pointer group flex flex-col h-full" onclick="alert('Buka Detail Anime ID: ${anime.category_id || anime.cid}')">
+                    <div class="relative overflow-hidden aspect-[3/4] bg-gray-700">
+                        <img src="${anime.img_url}" alt="${anime.category_name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:opacity-75">
+                        <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/90 to-transparent p-2">
+                            <p class="text-xs text-yellow-400 font-bold">⭐ ${anime.rating || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="p-3 flex-grow">
+                        <h3 class="font-semibold text-sm line-clamp-2 hover:text-yellow-400 transition" title="${anime.category_name}">${anime.category_name}</h3>
+                        <p class="text-xs text-gray-400 mt-1">${anime.count_anime || ''} Episode</p>
+                    </div>
+                </div>
+            `).join('');
+
+            // Atur Pagination
+            pagination.classList.remove('hidden');
+            const totalPages = Math.ceil(allAnimeResults.length / ANIME_PER_PAGE);
+            document.getElementById('res-page-indicator').innerText = `Hal ${currentResultPage} / ${totalPages}`;
+            document.getElementById('res-btn-prev').disabled = currentResultPage <= 1;
+            document.getElementById('res-btn-next').disabled = endIndex >= allAnimeResults.length;
+        }
+
+        function changeResultPage(direction) {
+            currentResultPage += direction;
+            renderResultPage();
+            window.scrollTo(0, 0);
+        }
+
+        function backToGenreList() {
+            document.getElementById('genre-result-section').classList.add('hidden');
+            document.getElementById('genre-list-section').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+    </script>
+</body>
+</html>

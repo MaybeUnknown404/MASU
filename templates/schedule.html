@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Anime - NIMEK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+        .card-hover:hover img { transform: scale(1.05); }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased flex flex-col min-h-screen">
+
+    <!-- NAVBAR RESPONSIF -->
+    <nav class="bg-gray-800 shadow-lg fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <a href="/" class="text-xl sm:text-2xl font-bold text-blue-500 hover:text-blue-400 transition">
+                    Miku<span class="text-white">Anime</span>
+                </a>
+                <div class="flex space-x-1 sm:space-x-4 text-xs sm:text-sm font-medium">
+                    <a href="/" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Home</a>
+                    <a href="/schedule" class="bg-gray-900 text-white px-2 sm:px-3 py-2 rounded-md">Jadwal</a>
+                    <a href="/genre" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Genre</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- KONTEN UTAMA JADWAL -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex-grow w-full">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-gray-800 pb-4 gap-4">
+            <h2 class="text-xl sm:text-2xl font-bold border-l-4 border-green-500 pl-3">Jadwal Rilis Anime (Ongoing)</h2>
+            <a href="/" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs sm:text-sm font-semibold transition">&larr; Kembali ke Home</a>
+        </div>
+
+        <!-- Filter Tombol Hari (Termasuk Unknown untuk nilai 0 / lainnya) -->
+        <div id="days-filter" class="flex flex-wrap gap-2 mb-8"></div>
+
+        <!-- Loading State -->
+        <div id="loading-schedule" class="flex justify-center items-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+        </div>
+
+        <!-- Grid Jadwal Anime -->
+        <div id="schedule-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 hidden"></div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm mt-auto">
+        <p>&copy; 2026 NIMEK. Coded with KNTL.</p>
+    </footer>
+
+    <!-- JAVASCRIPT JADWAL -->
+    <script>
+        let allOngoingAnime = [];
+        
+        // Pemetaan angka dari API ke nama hari (0 masuk ke Unknown/Lainnya)
+        const dayMapping = {
+            '1': 'Senin',
+            '2': 'Selasa',
+            '3': 'Rabu',
+            '4': 'Kamis',
+            '5': 'Jumat',
+            '6': 'Sabtu',
+            '7': 'Minggu',
+            '0': 'Unknown'
+        };
+
+        const daysList = ['Semua', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu', 'Unknown'];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderDayButtons('Semua');
+            fetchOngoingSchedule();
+        });
+
+        function renderDayButtons(activeDay = 'Semua') {
+            const filterContainer = document.getElementById('days-filter');
+            filterContainer.innerHTML = '';
+
+            daysList.forEach(day => {
+                const isActive = day === activeDay;
+                filterContainer.innerHTML += `
+                    <button onclick="filterByDay('${day}')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${isActive ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700'}">
+                        ${day}
+                    </button>
+                `;
+            });
+        }
+
+        async function fetchOngoingSchedule() {
+            try {
+                const formData = new URLSearchParams({ 'isAPKvalid': 'true', 'page': 1, 'count': 100, 'lang': 'ID' });
+                const res = await fetch('/nontonanime-x/phalcon/api/get_category_ongoing/', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                document.getElementById('loading-schedule').classList.add('hidden');
+
+                if (data.status === 'ok' && data.categories) {
+                    allOngoingAnime = data.categories;
+                    filterByDay('Semua');
+                } else {
+                    document.getElementById('schedule-grid').innerHTML = '<p class="text-gray-400 col-span-full text-center">Gagal memuat jadwal.</p>';
+                    document.getElementById('schedule-grid').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function filterByDay(dayName) {
+            renderDayButtons(dayName);
+            const grid = document.getElementById('schedule-grid');
+            grid.innerHTML = '';
+            grid.classList.remove('hidden');
+
+            let filtered = allOngoingAnime;
+
+            if (dayName !== 'Semua') {
+                filtered = allOngoingAnime.filter(anime => {
+                    const rawDays = anime.days !== undefined && anime.days !== null ? String(anime.days).trim() : '0';
+                    const mappedDay = dayMapping[rawDays] || 'Unknown';
+                    return mappedDay.toLowerCase() === dayName.toLowerCase();
+                });
+            }
+
+            if (filtered.length > 0) {
+                grid.innerHTML = filtered.map(anime => {
+                    const rawDays = anime.days !== undefined && anime.days !== null ? String(anime.days).trim() : '0';
+                    const displayDay = dayMapping[rawDays] || 'Unknown';
+
+                    return `
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg card-hover cursor-pointer group flex flex-col h-full" onclick="window.location.href='/detail?id=${anime.category_id || anime.cid}'">
+                            <div class="relative overflow-hidden aspect-[3/4] bg-gray-700">
+                                <img src="${anime.img_url}" alt="${anime.category_name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:opacity-75">
+                                <div class="absolute top-2 left-2">
+                                    <span class="bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow">${displayDay}</span>
+                                </div>
+                                <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/90 to-transparent p-2">
+                                    <p class="text-xs text-yellow-400 font-bold">⭐ ${anime.rating || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div class="p-3 flex-grow">
+                                <h3 class="font-semibold text-sm line-clamp-2 hover:text-green-400 transition" title="${anime.category_name}">${anime.category_name}</h3>
+                                <p class="text-xs text-gray-400 mt-1">${anime.count_anime || ''} Episode</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                grid.innerHTML = `<p class="text-center col-span-full text-gray-400 py-10">Tidak ada jadwal anime rilis untuk kategori "${dayName}".</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

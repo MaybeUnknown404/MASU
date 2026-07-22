@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Episode - NIMEK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased flex flex-col min-h-screen">
+
+    <nav class="bg-gray-800 shadow-lg fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <a href="/" class="text-xl sm:text-2xl font-bold text-blue-500 hover:text-blue-400 transition">
+                    Miku<span class="text-white">Anime</span>
+                </a>
+                <div class="flex space-x-1 sm:space-x-4 text-xs sm:text-sm font-medium">
+                    <a href="/" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Home</a>
+                    <a href="/schedule" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Jadwal</a>
+                    <a href="/genre" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Genre</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex-grow w-full">
+        <button onclick="history.back()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs sm:text-sm font-semibold transition mb-6">&larr; Kembali</button>
+
+        <div id="loading-player" class="flex justify-center items-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+
+        <div id="player-container" class="hidden">
+            <h1 id="ep-title" class="text-xl sm:text-2xl font-bold mb-4">Judul Episode</h1>
+
+            <div class="relative bg-black rounded-xl overflow-hidden shadow-2xl aspect-video mb-6">
+                <video id="main-video" controls class="w-full h-full object-contain">
+                    Browser Anda tidak mendukung pemutar video HTML5.
+                </video>
+            </div>
+
+            <div class="bg-gray-800 p-4 rounded-xl shadow-lg mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-400">Resolusi:</span>
+                    <div id="quality-buttons" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div id="download-section" class="hidden">
+                    <a id="btn-download" href="#" target="_blank" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2">
+                        Download
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                <h3 class="text-lg font-bold border-l-4 border-blue-500 pl-3 mb-3">Sinopsis</h3>
+                <div id="ep-synopsis" class="text-xs sm:text-sm text-gray-300 leading-relaxed space-y-2"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm mt-auto">
+        <p>&copy; 2026 NIMEK. Coded with KNTL.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const channelId = urlParams.get('id');
+
+            if (channelId) {
+                fetchEpisodeData(channelId);
+            } else {
+                document.getElementById('loading-player').innerHTML = '<p class="text-red-500">ID Episode tidak ditemukan.</p>';
+            }
+        });
+
+        async function fetchEpisodeData(channelId) {
+            try {
+                const formData = new URLSearchParams({ 'isAPKvalid': 'true', 'channel_id': channelId });
+                const res = await fetch('/nontonanime-x/phalcon/api/get_post_description/', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                document.getElementById('loading-player').classList.add('hidden');
+                document.getElementById('player-container').classList.remove('hidden');
+
+                if (data.status === 'ok') {
+                    document.getElementById('ep-title').innerText = data.channel_name || 'Streaming Episode';
+                    document.getElementById('ep-synopsis').innerHTML = data.channel_description || 'Tidak ada deskripsi.';
+
+                    const videoPlayer = document.getElementById('main-video');
+                    const qualityContainer = document.getElementById('quality-buttons');
+                    qualityContainer.innerHTML = '';
+
+                    let availableSources = [];
+                    if (data.channel_url) availableSources.push({ label: 'SD', url: data.channel_url });
+                    if (data.channel_url_hd) availableSources.push({ label: 'HD', url: data.channel_url_hd });
+                    if (data.channel_url_fhd) availableSources.push({ label: 'FHD', url: data.channel_url_fhd });
+
+                    if (availableSources.length > 0) {
+                        videoPlayer.src = availableSources[0].url;
+
+                        const savedTime = localStorage.getItem(`anime_time_${channelId}`);
+                        if (savedTime) {
+                            videoPlayer.currentTime = parseFloat(savedTime);
+                        }
+
+                        videoPlayer.addEventListener('timeupdate', () => {
+                            if (!isNaN(videoPlayer.duration) && videoPlayer.duration > 0) {
+                                const currentTime = videoPlayer.currentTime;
+                                const duration = videoPlayer.duration;
+                                const percent = Math.floor((currentTime / duration) * 100);
+
+                                localStorage.setItem(`anime_time_${channelId}`, currentTime);
+                                localStorage.setItem(`anime_progress_${channelId}`, JSON.stringify({
+                                    currentTime: currentTime,
+                                    duration: duration,
+                                    percent: percent,
+                                    title: data.channel_name,
+                                    imgUrl: data.img_url || '', // Menyimpan URL poster gambar
+                                    timestamp: new Date().getTime()
+                                }));
+                            }
+                        });
+
+                        availableSources.forEach((src, index) => {
+                            const btn = document.createElement('button');
+                            btn.innerText = src.label;
+                            btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition ${index === 0 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`;
+                            btn.onclick = () => {
+                                const t = videoPlayer.currentTime;
+                                videoPlayer.src = src.url;
+                                videoPlayer.currentTime = t;
+                                videoPlayer.play();
+                                document.querySelectorAll('#quality-buttons button').forEach(b => b.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-gray-700 text-gray-300 hover:bg-gray-600');
+                                btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-blue-600 text-white';
+                            };
+                            qualityContainer.appendChild(btn);
+                        });
+                    }
+
+                    if (data.allow_download && data.download_url) {
+                        document.getElementById('download-section').classList.remove('hidden');
+                        document.getElementById('btn-download').href = data.download_url;
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+    </script>
+</body>
+</html>

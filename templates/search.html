@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pencarian Anime - NIMEK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+        .card-hover:hover img { transform: scale(1.05); }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased flex flex-col min-h-screen">
+
+    <nav class="bg-gray-800 shadow-lg fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center gap-1 sm:gap-2">
+                <a href="/" class="text-lg sm:text-2xl font-bold text-blue-500 hover:text-blue-400 transition flex-shrink-0">
+                    Miku<span class="text-white">Anime</span>
+                </a>
+                
+                <div class="flex items-center gap-1 sm:gap-3">
+                    <div class="flex space-x-1 text-[11px] sm:text-sm font-medium">
+                        <a href="/" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 py-1.5 rounded-md">Home</a>
+                        <a href="/schedule" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 py-1.5 rounded-md">Jadwal</a>
+                        <a href="/genre" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 py-1.5 rounded-md">Genre</a>
+                    </div>
+
+                    <form onsubmit="handleSearch(event)" class="flex items-center">
+                        <input type="text" id="global-search-input" placeholder="Cari..." class="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-20 sm:w-32">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1.5 rounded-r-lg text-xs font-semibold transition">Cari</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex-grow w-full">
+        <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+            <h2 id="search-title" class="text-xl sm:text-2xl font-bold border-l-4 border-blue-500 pl-3">Hasil Pencarian</h2>
+            <a href="/" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs sm:text-sm font-semibold transition">&larr; Kembali</a>
+        </div>
+
+        <div id="loading-search" class="flex justify-center items-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+
+        <!-- Grid Hasil Pencarian -->
+        <div id="search-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 hidden"></div>
+
+        <!-- Pagination (Prev / Next) -->
+        <div id="pagination-container" class="flex justify-center items-center mt-12 space-x-3 hidden">
+            <button id="btn-prev" onclick="changeSearchPage(-1)" class="bg-gray-800 text-blue-400 border border-gray-700 hover:bg-gray-700 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition disabled:opacity-50">&larr; Prev</button>
+            <span id="page-indicator" class="font-bold text-xs sm:text-sm bg-blue-600 text-white px-3 sm:px-5 py-2 rounded-lg shadow-lg">Hal 1</span>
+            <button id="btn-next" onclick="changeSearchPage(1)" class="bg-gray-800 text-blue-400 border border-gray-700 hover:bg-gray-700 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition disabled:opacity-50">Next &rarr;</button>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm mt-auto">
+        <p>&copy; 2026 NIMEK. Coded with KNTL.</p>
+    </footer>
+
+    <script>
+        let currentQuery = '';
+        let currentSearchPage = 1;
+        const limitPerPage = 10; // Dibatasi 10 item per halaman
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            currentQuery = urlParams.get('q');
+
+            if (currentQuery) {
+                document.getElementById('global-search-input').value = currentQuery;
+                document.getElementById('search-title').innerText = `Hasil Pencarian: "${currentQuery}"`;
+                executeSearch(currentQuery, currentSearchPage);
+            } else {
+                document.getElementById('loading-search').innerHTML = '<p class="text-gray-400">Masukkan kata kunci pencarian pada kolom di atas.</p>';
+            }
+        });
+
+        async function executeSearch(query, page) {
+            try {
+                document.getElementById('loading-search').classList.remove('hidden');
+                document.getElementById('search-grid').classList.add('hidden');
+                document.getElementById('pagination-container').classList.add('hidden');
+                window.scrollTo(0, 0);
+
+                const formData = new URLSearchParams({
+                    'isAPKvalid': 'true',
+                    'search': query,
+                    'page': page,
+                    'count': limitPerPage, // Menggunakan limit 10 item
+                    'lang': 'ID'
+                });
+
+                const res = await fetch('/nontonanime-x/phalcon/api/search_category_collection/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                document.getElementById('loading-search').classList.add('hidden');
+                const grid = document.getElementById('search-grid');
+                grid.classList.remove('hidden');
+                document.getElementById('pagination-container').classList.remove('hidden');
+
+                // Update Indikator Halaman & Tombol Prev/Next
+                document.getElementById('page-indicator').innerText = `Hal ${page}`;
+                document.getElementById('btn-prev').disabled = page <= 1;
+
+                if (data.status === 'ok' && data.categories && data.categories.length > 0) {
+                    grid.innerHTML = data.categories.map(anime => `
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg card-hover cursor-pointer group flex flex-col h-full" onclick="window.location.href='/detail?id=${anime.cid || anime.category_id}'">
+                            <div class="relative overflow-hidden aspect-[3/4] bg-gray-700">
+                                <img src="${anime.img_url}" alt="${anime.category_name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:opacity-75">
+                                <div class="absolute top-2 left-2">
+                                    <span class="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow">${anime.years || ''}</span>
+                                </div>
+                                <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/90 to-transparent p-2">
+                                    <p class="text-xs text-yellow-400 font-bold">⭐ ${anime.rating || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div class="p-3 flex-grow">
+                                <h3 class="font-semibold text-sm line-clamp-2 hover:text-blue-400 transition" title="${anime.category_name}">${anime.category_name}</h3>
+                                <p class="text-xs text-gray-400 mt-1">${anime.count_anime || ''} Episode</p>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    // Jika jumlah data kurang dari limit, nonaktifkan tombol next
+                    document.getElementById('btn-next').disabled = data.categories.length < limitPerPage;
+                } else {
+                    grid.innerHTML = '<p class="text-center col-span-full text-gray-400 py-12">Anime tidak ditemukan.</p>';
+                    document.getElementById('btn-next').disabled = true;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function changeSearchPage(direction) {
+            currentSearchPage += direction;
+            executeSearch(currentQuery, currentSearchPage);
+        }
+
+        function handleSearch(event) {
+            event.preventDefault();
+            const query = document.getElementById('global-search-input').value.trim();
+            if (query) {
+                window.location.href = `/search?q=${encodeURIComponent(query)}`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail Anime - NIMEK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased flex flex-col min-h-screen">
+
+    <!-- NAVBAR -->
+    <nav class="bg-gray-800 shadow-lg fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <a href="/" class="text-xl sm:text-2xl font-bold text-blue-500 hover:text-blue-400 transition">
+                    Miku<span class="text-white">Anime</span>
+                </a>
+                <div class="flex space-x-1 sm:space-x-4 text-xs sm:text-sm font-medium">
+                    <a href="/" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Home</a>
+                    <a href="/schedule" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Jadwal</a>
+                    <a href="/genre" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 sm:px-3 py-2 rounded-md">Genre</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- KONTEN UTAMA DETAIL -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex-grow w-full">
+        <button onclick="history.back()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs sm:text-sm font-semibold transition mb-6">&larr; Kembali</button>
+        
+        <div id="loading-detail" class="flex justify-center items-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+
+        <div id="detail-content" class="hidden">
+            <div class="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-xl flex flex-col md:flex-row gap-6 mb-10">
+                <img id="detail-img" src="" alt="Poster" class="w-full md:w-64 h-80 sm:h-96 object-cover rounded-lg shadow-md flex-shrink-0">
+                <div class="flex flex-col justify-between flex-grow">
+                    <div>
+                        <h1 id="detail-title" class="text-2xl sm:text-3xl font-bold mb-3">Judul Anime</h1>
+                        <p id="detail-genres" class="text-xs sm:text-sm text-blue-400 mb-4 font-medium">Genre...</p>
+                        
+                        <div class="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-300 mb-6">
+                            <span class="bg-gray-700 px-3 py-1 rounded-full">⭐ Rating: <strong id="detail-rating" class="text-yellow-400">0.0</strong></span>
+                            <span class="bg-gray-700 px-3 py-1 rounded-full">📅 Tahun: <strong id="detail-years">2026</strong></span>
+                            <span class="bg-gray-700 px-3 py-1 rounded-full">🟢 Status: <strong id="detail-status">Ongoing</strong></span>
+                        </div>
+
+                        <div class="text-gray-300 text-xs sm:text-sm leading-relaxed bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                            <h4 class="font-bold text-white mb-2">Sinopsis:</h4>
+                            <div id="detail-synopsis" class="space-y-2 text-gray-400">Memuat sinopsis...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="text-lg sm:text-xl font-bold border-l-4 border-blue-500 pl-3 mb-6">Daftar Episode</h3>
+            <!-- Grid Episode dengan Indikator History -->
+            <div id="episodes-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm mt-auto">
+        <p>&copy; 2026 NIMEK. Coded with KNTL.</p>
+    </footer>
+
+    <!-- JAVASCRIPT DETAIL + LOCALSTORAGE CHECK -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const animeId = urlParams.get('id');
+
+            if (animeId) {
+                fetchAnimeDetail(animeId);
+            } else {
+                document.getElementById('loading-detail').innerHTML = '<p class="text-red-500">ID Anime tidak valid.</p>';
+            }
+        });
+
+        async function fetchAnimeDetail(animeId) {
+            try {
+                const formData = new URLSearchParams({ 'isAPKvalid': 'true', 'id': animeId });
+                const res = await fetch('/nontonanime-v77/phalcon/api/get_category_posts_secure/v9_1/', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if(data.status === 'ok') {
+                    const cat = data.category;
+                    document.getElementById('detail-img').src = cat.img_url;
+                    document.getElementById('detail-title').innerText = cat.category_name;
+                    document.getElementById('detail-genres').innerText = cat.genre || 'Action, Adventure';
+                    document.getElementById('detail-rating').innerText = cat.rating || 'N/A';
+                    document.getElementById('detail-years').innerText = cat.years || 'N/A';
+                    document.getElementById('detail-status').innerText = cat.ongoing === 1 ? 'Ongoing' : 'Tamat';
+
+                    if (data.posts && data.posts.length > 0) {
+                        const targetChannelId = data.posts[0].channel_id;
+                        const descFormData = new URLSearchParams({ 'isAPKvalid': 'true', 'channel_id': targetChannelId });
+                        const descRes = await fetch('/nontonanime-x/phalcon/api/get_post_description/', { method: 'POST', body: descFormData });
+                        const descData = await descRes.json();
+                        
+                        if(descData.status === 'ok' && descData.channel_description) {
+                            document.getElementById('detail-synopsis').innerHTML = descData.channel_description;
+                        } else {
+                            document.getElementById('detail-synopsis').innerHTML = 'Sinopsis tidak tersedia.';
+                        }
+                    }
+
+                    // Render List Episode dengan Cek History di localStorage
+                    const epGrid = document.getElementById('episodes-grid');
+                    epGrid.innerHTML = '';
+                    
+                    if(data.posts && data.posts.length > 0) {
+                        data.posts.forEach(ep => {
+                            const progressDataStr = localStorage.getItem(`anime_progress_${ep.channel_id}`);
+                            let badgeHtml = '';
+                            let borderColor = 'border-gray-700 hover:border-blue-500';
+
+                            if (progressDataStr) {
+                                const prog = JSON.parse(progressDataStr);
+                                const minutes = Math.floor(prog.currentTime / 60);
+                                const seconds = Math.floor(prog.currentTime % 60);
+                                const timeStr = `${minutes}m ${seconds}s`;
+                                
+                                if (prog.percent >= 90) {
+                                    // Sudah hampir habis / selesai ditonton
+                                    borderColor = 'border-green-600';
+                                    badgeHtml = `<span class="text-[10px] bg-green-900/80 text-green-300 px-2 py-0.5 rounded font-medium mt-1">✔ Selesai (${prog.percent}%)</span>`;
+                                } else {
+                                    // Sedang dilanjutkan (Lanjut nonton)
+                                    borderColor = 'border-yellow-600';
+                                    badgeHtml = `<span class="text-[10px] bg-yellow-900/80 text-yellow-300 px-2 py-0.5 rounded font-medium mt-1">▶ Lanjut ${timeStr} (${prog.percent}%)</span>`;
+                                }
+                            }
+
+                            epGrid.innerHTML += `
+                                <button onclick="window.location.href='/player?id=${ep.channel_id}'" class="bg-gray-800 hover:bg-blue-600 border ${borderColor} text-gray-200 hover:text-white p-3 rounded-lg text-sm font-medium transition text-left flex flex-col justify-between shadow">
+                                    <div class="flex items-center justify-between w-full">
+                                        <span class="truncate">${ep.channel_name}</span>
+                                        <svg class="w-4 h-4 ml-2 flex-shrink-0 text-blue-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                    </div>
+                                    ${badgeHtml}
+                                </button>
+                            `;
+                        });
+                    } else {
+                        epGrid.innerHTML = '<p class="text-gray-400 col-span-full">Belum ada episode tersedia.</p>';
+                    }
+
+                    document.getElementById('loading-detail').classList.add('hidden');
+                    document.getElementById('detail-content').classList.remove('hidden');
+                }
+            } catch(e) { console.error(e); }
+        }
+    </script>
+</body>
+</html>
