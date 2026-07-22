@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIMEK - Streaming Anime Gratis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+        .card-hover:hover img { transform: scale(1.05); }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased flex flex-col min-h-screen">
+
+    <!-- NAVBAR RESPONSIF (TAMPIL SEMUA DI HP & DESKTOP) -->
+    <nav class="bg-gray-800 shadow-lg fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center gap-1 sm:gap-2">
+                <!-- Logo -->
+                <a href="#" onclick="showView('dashboard-view')" class="text-lg sm:text-2xl font-bold text-blue-500 hover:text-blue-400 transition flex-shrink-0">
+                    Miku<span class="text-white">Anime</span>
+                </a>
+                
+                <!-- Menu Navigasi & Pencarian -->
+                <div class="flex items-center gap-1 sm:gap-3">
+                    <div class="flex space-x-1 text-[11px] sm:text-sm font-medium">
+                        <a href="#" onclick="showView('dashboard-view')" class="bg-gray-900 text-white px-2 py-1.5 rounded-md">Home</a>
+                        <a href="#" onclick="openHistoryView()" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 py-1.5 rounded-md">History</a>
+                        <a href="/schedule" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 py-1.5 rounded-md">Jadwal</a>
+                        <a href="/genre" class="text-gray-300 hover:bg-gray-700 hover:text-white px-2 py-1.5 rounded-md">Genre</a>
+                    </div>
+
+                    <!-- Form Pencarian -->
+                    <form action="http://127.0.0.1:8000/search" method="GET" class="flex items-center">                        <input type="text" name="q" id="global-search-input" placeholder="Cari..." class="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-20 sm:w-32">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1.5 rounded-r-lg text-xs font-semibold transition">Cari</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- DASHBOARD -->
+    <main id="dashboard-view" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex-grow w-full">
+        
+        <!-- SECTION HISTORY DI HOME (UKURAN KECIL, LIMIT 4) -->
+        <section id="home-history-section" class="mb-14 hidden">
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-xl sm:text-2xl font-bold border-l-4 border-yellow-500 pl-3">Lanjutkan Menonton</h2>
+                <button onclick="openHistoryView()" class="text-xs sm:text-sm font-medium bg-gray-800 px-3 py-1.5 rounded border border-gray-700 text-yellow-400 hover:bg-gray-700 transition">Lihat Semua History &rarr;</button>
+            </div>
+            <div id="home-history-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+            <hr class="border-gray-800 mt-10">
+        </section>
+
+        <section class="mb-14">
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-xl sm:text-2xl font-bold border-l-4 border-blue-500 pl-3">Update Episode Terbaru</h2>
+                <button onclick="openFullPage('latest')" class="text-xs sm:text-sm font-medium bg-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded border border-gray-700 text-blue-400 hover:bg-gray-700 transition">Lihat Semua &rarr;</button>
+            </div>
+            <div id="loading-latest" class="flex justify-center items-center py-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div></div>
+            <div id="latest-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 hidden"></div>
+        </section>
+
+        <hr class="border-gray-800 mb-10">
+
+        <section class="mb-14">
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-xl sm:text-2xl font-bold border-l-4 border-green-500 pl-3">Anime Musim Ini (Ongoing)</h2>
+                <button onclick="openFullPage('ongoing')" class="text-xs sm:text-sm font-medium bg-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded border border-gray-700 text-green-400 hover:bg-gray-700 transition">Lihat Semua &rarr;</button>
+            </div>
+            <div id="loading-ongoing" class="flex justify-center items-center py-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500"></div></div>
+            <div id="ongoing-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 hidden"></div>
+        </section>
+
+        <hr class="border-gray-800 mb-10">
+
+        <section class="mb-14">
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-xl sm:text-2xl font-bold border-l-4 border-purple-500 pl-3">Semua Anime (Tamat)</h2>
+                <button onclick="openFullPage('all')" class="text-xs sm:text-sm font-medium bg-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded border border-gray-700 text-purple-400 hover:bg-gray-700 transition">Lihat Semua &rarr;</button>
+            </div>
+            <div id="loading-all" class="flex justify-center items-center py-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500"></div></div>
+            <div id="all-anime-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 hidden"></div>
+        </section>
+    </main>
+
+    <!-- FULL PAGE (PAGINATION) -->
+    <main id="full-page-view" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex-grow w-full hidden">
+        <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+            <h2 id="full-page-title" class="text-xl sm:text-2xl font-bold border-l-4 border-blue-500 pl-3">Judul Halaman</h2>
+            <button onclick="showView('dashboard-view')" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs sm:text-sm font-semibold transition">&larr; Kembali</button>
+        </div>
+        <div id="loading-full" class="flex justify-center items-center py-20 hidden"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>
+        <div id="full-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6"></div>
+        <div class="flex justify-center items-center mt-12 space-x-3">
+            <button id="btn-prev" onclick="changePage(-1)" class="bg-gray-800 text-blue-400 border border-gray-700 hover:bg-gray-700 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition disabled:opacity-50">&larr; Prev</button>
+            <span id="page-indicator" class="font-bold text-xs sm:text-sm bg-blue-600 text-white px-3 sm:px-5 py-2 rounded-lg shadow-lg">Hal 1</span>
+            <button id="btn-next" onclick="changePage(1)" class="bg-gray-800 text-blue-400 border border-gray-700 hover:bg-gray-700 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition disabled:opacity-50">Next &rarr;</button>
+        </div>
+    </main>
+
+    <!-- HALAMAN KHUSUS HISTORY -->
+    <main id="history-view" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex-grow w-full hidden">
+        <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+            <h2 class="text-xl sm:text-2xl font-bold border-l-4 border-yellow-500 pl-3">Riwayat Tontonan Lengkap</h2>
+            <button onclick="showView('dashboard-view')" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs sm:text-sm font-semibold transition">&larr; Kembali ke Home</button>
+        </div>
+        <div id="full-history-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6"></div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm mt-auto">
+        <p>&copy; 2026 NIMEK. Coded with KNTL.</p>
+    </footer>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        let currentMode = 'latest';
+        let currentPage = 1;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+            checkAndRenderHomeHistory();
+        });
+
+        function showView(viewName) {
+            window.scrollTo(0, 0);
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('full-page-view').classList.add('hidden');
+            document.getElementById('history-view').classList.add('hidden');
+            document.getElementById(viewName).classList.remove('hidden');
+        }
+
+        function handleSearch(event) {
+            event.preventDefault();
+            const query = document.getElementById('global-search-input').value.trim();
+            if (query) {
+                window.location.href = `/search?q=${encodeURIComponent(query)}`;
+            }
+        }
+
+        function getStoredHistory() {
+            let historiesMap = new Map();
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('anime_progress_')) {
+                    try {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        const channelId = key.replace('anime_progress_', '');
+                        
+                        let animeTitle = data.title || "Episode Anime";
+                        animeTitle = animeTitle.replace(/\s-\s(Episode|Ep)\s.*$/i, "").trim();
+
+                        const historyItem = { channelId, animeTitle, ...data };
+
+                        if (historiesMap.has(animeTitle)) {
+                            if (historiesMap.get(animeTitle).timestamp < data.timestamp) {
+                                historiesMap.set(animeTitle, historyItem);
+                            }
+                        } else {
+                            historiesMap.set(animeTitle, historyItem);
+                        }
+                    } catch(e) {}
+                }
+            }
+            return Array.from(historiesMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+        }
+
+        function checkAndRenderHomeHistory() {
+            const histories = getStoredHistory();
+            const section = document.getElementById('home-history-section');
+            const grid = document.getElementById('home-history-grid');
+
+            if (histories.length > 0) {
+                section.classList.remove('hidden');
+                grid.innerHTML = histories.slice(0, 4).map(h => generateHistoryCard(h, false)).join('');
+            } else {
+                section.classList.add('hidden');
+            }
+        }
+
+        function openHistoryView() {
+            showView('history-view');
+            const histories = getStoredHistory();
+            const grid = document.getElementById('full-history-grid');
+
+            if (histories.length > 0) {
+                grid.innerHTML = histories.map(h => generateHistoryCard(h, true)).join('');
+            } else {
+                grid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-12">Belum ada riwayat tontonan.</p>';
+            }
+        }
+
+        function generateHistoryCard(h, showDeleteBtn) {
+            const minutes = Math.floor(h.currentTime / 60);
+            const seconds = Math.floor(h.currentTime % 60);
+            const timeStr = `${minutes}m ${seconds}s`;
+            const posterImg = h.imgUrl || 'https://via.placeholder.com/300x400?text=No+Image';
+
+            return `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg card-hover group flex flex-col h-full border border-gray-700">
+                    <div class="relative overflow-hidden aspect-[3/4] bg-gray-700 cursor-pointer" onclick="window.location.href='/player?id=${h.channelId}'">
+                        <img src="${posterImg}" alt="${h.title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:opacity-75">
+                        <div class="absolute top-2 left-2">
+                            <span class="${h.percent >= 90 ? 'bg-green-600' : 'bg-yellow-600'} text-white text-[10px] font-bold px-2 py-1 rounded shadow">
+                                ${h.percent >= 90 ? 'Selesai' : h.percent + '%'}
+                            </span>
+                        </div>
+                        <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/90 to-transparent p-2">
+                            <p class="text-[11px] text-yellow-400 font-bold">Lanjut: ${timeStr}</p>
+                        </div>
+                    </div>
+                    <div class="p-2.5 flex-grow flex flex-col justify-between">
+                        <h3 class="font-semibold text-xs line-clamp-2 hover:text-yellow-400 transition cursor-pointer" onclick="window.location.href='/player?id=${h.channelId}'" title="${h.title}">${h.title}</h3>
+                        ${showDeleteBtn ? `
+                            <button onclick="deleteHistory('${h.channelId}')" class="mt-2 bg-red-600/80 hover:bg-red-700 text-white text-[11px] py-1 px-2 rounded font-medium transition w-full">
+                                Hapus
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function deleteHistory(channelId) {
+            if (confirm("Hapus riwayat tontonan ini?")) {
+                localStorage.removeItem(`anime_progress_${channelId}`);
+                localStorage.removeItem(`anime_time_${channelId}`);
+                openHistoryView();
+                checkAndRenderHomeHistory();
+            }
+        }
+
+        async function loadDashboard() {
+            fetchDashboardData('/nontonanime-x/phalcon/api/get_posts/', 'loading-latest', 'latest-grid', 10, 'episode');
+            fetchDashboardData('/nontonanime-x/phalcon/api/get_category_ongoing/', 'loading-ongoing', 'ongoing-grid', 10, 'ongoing');
+            fetchDashboardData('/nontonanime-x/phalcon/api/get_category_not_ongoing/', 'loading-all', 'all-anime-grid', 10, 'tamat');
+        }
+
+        async function fetchDashboardData(url, loaderId, gridId, limit, type) {
+            try {
+                const formData = new URLSearchParams({ 'isAPKvalid': 'true', 'page': 1, 'count': limit, 'lang': 'ID' });
+                const res = await fetch(url, { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                document.getElementById(loaderId).classList.add('hidden');
+                const grid = document.getElementById(gridId);
+                grid.classList.remove('hidden');
+
+                if(type === 'episode' && data.posts) {
+                    grid.innerHTML = generateCards(data.posts, 'episode');
+                } else if(data.categories) {
+                    grid.innerHTML = generateCards(data.categories, type);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function openFullPage(mode) {
+            currentMode = mode;
+            currentPage = 1;
+            let titleText = '', borderColor = '';
+            if(mode === 'latest') { titleText = 'Semua Episode Terbaru'; borderColor = 'border-blue-500'; }
+            else if(mode === 'ongoing') { titleText = 'Semua Anime Ongoing (Musim Ini)'; borderColor = 'border-green-500'; }
+            else if(mode === 'all') { titleText = 'Semua Daftar Anime (Tamat)'; borderColor = 'border-purple-500'; }
+
+            const titleEl = document.getElementById('full-page-title');
+            titleEl.innerText = titleText;
+            titleEl.className = `text-xl sm:text-2xl font-bold border-l-4 ${borderColor} pl-3`;
+
+            showView('full-page-view');
+            fetchFullPageData();
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            fetchFullPageData();
+        }
+
+        async function fetchFullPageData() {
+            const grid = document.getElementById('full-grid');
+            const loader = document.getElementById('loading-full');
+            grid.innerHTML = '';
+            loader.classList.remove('hidden');
+            window.scrollTo(0, 0);
+
+            document.getElementById('page-indicator').innerText = `Hal ${currentPage}`;
+            document.getElementById('btn-prev').disabled = currentPage <= 1;
+
+            let endpoint = '';
+            if(currentMode === 'latest') endpoint = '/nontonanime-x/phalcon/api/get_posts/';
+            else if(currentMode === 'ongoing') endpoint = '/nontonanime-x/phalcon/api/get_category_ongoing/';
+            else if(currentMode === 'all') endpoint = '/nontonanime-x/phalcon/api/get_category_not_ongoing/';
+
+            try {
+                const formData = new URLSearchParams({ 'isAPKvalid': 'true', 'page': currentPage, 'count': 20, 'lang': 'ID' });
+                const res = await fetch(endpoint, { method: 'POST', body: formData });
+                const data = await res.json();
+                loader.classList.add('hidden');
+
+                let hasData = false;
+                if(currentMode === 'latest' && data.posts && data.posts.length > 0) {
+                    grid.innerHTML = generateCards(data.posts, 'episode');
+                    hasData = true;
+                } else if(currentMode !== 'latest' && data.categories && data.categories.length > 0) {
+                    grid.innerHTML = generateCards(data.categories, currentMode);
+                    hasData = true;
+                }
+                document.getElementById('btn-next').disabled = !hasData;
+            } catch(e) { console.error(e); }
+        }
+
+        function generateCards(items, type) {
+            return items.map(item => {
+                const id = type === 'episode' ? item.category_id : (item.category_id || item.cid);
+                const title = type === 'episode' ? item.channel_name : item.category_name;
+                const badge = type === 'ongoing' 
+                    ? `<span class="bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow">Ongoing</span>` 
+                    : (type === 'tamat' ? `<span class="bg-gray-900/80 text-white text-[10px] font-bold px-2 py-1 rounded shadow">${item.years || ''}</span>` : (item.is_fhd_available ? '<span class="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow">FHD</span>' : ''));
+
+                return `
+                    <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg card-hover cursor-pointer group flex flex-col h-full" onclick="window.location.href='/detail?id=${id}'">
+                        <div class="relative overflow-hidden aspect-[3/4] bg-gray-700">
+                            <img src="${item.img_url}" alt="${title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:opacity-75">
+                            <div class="absolute top-2 left-2 right-2 flex justify-between">${badge}</div>
+                            <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/90 to-transparent p-2">
+                                <p class="text-xs text-yellow-400 font-bold">${type === 'episode' ? '👁️ ' + item.count_view : '⭐ ' + (item.rating || 'N/A')}</p>
+                            </div>
+                        </div>
+                        <div class="p-3 flex-grow">
+                            <h3 class="font-semibold text-sm line-clamp-2 hover:text-blue-400 transition" title="${title}">${title}</h3>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
